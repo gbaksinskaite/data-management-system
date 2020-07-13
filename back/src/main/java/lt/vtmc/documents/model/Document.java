@@ -2,6 +2,7 @@ package lt.vtmc.documents.model;
 
 import java.util.List;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -12,6 +13,7 @@ import javax.persistence.Table;
 import javax.validation.constraints.NotEmpty;
 
 import lt.vtmc.docTypes.model.DocType;
+import lt.vtmc.documents.Status;
 import lt.vtmc.files.model.File4DB;
 import lt.vtmc.user.model.User;
 
@@ -28,31 +30,52 @@ public class Document {
 
 	@ManyToOne
 	private User author;
-	
+
 	@ManyToOne
 	private DocType dType;
-	
+
 	@NotEmpty
 	private String dateCreate;
-	
+
 	@NotEmpty
+	@Column(name = "description", length = 500)
 	private String description;
-	
+
 	private String dateSubmit = null;
-	
+
 	private String dateProcessed = null;
-	
+
+	@Column(name = "reject_reason", length = 3000)
 	private String reasonToReject = null;
-	
+
+	private Status status;
+
+	private String UID;
+
 	@ManyToOne
 	private User handler = null;
-	
+
 	@OneToMany
-	private List<File4DB>fileList;
-	
-	
+	private List<File4DB> fileList;
+
 	public Document() {
-		
+
+	}
+
+	public String getUID() {
+		return UID;
+	}
+
+	public void setUID(String uID) {
+		UID = uID;
+	}
+
+	public Status getStatus() {
+		return status;
+	}
+
+	public void setStatus(Status status) {
+		this.status = status;
 	}
 
 	public List<File4DB> getFileList() {
@@ -143,13 +166,15 @@ public class Document {
 		this.handler = handler;
 	}
 
-	public Document(String dateCreate, User author, DocType dType, String name, String description) {
+	public Document(String dateCreate, User author, DocType dType, String name, String description, String UID) {
 		super();
 		this.dateCreate = dateCreate;
 		this.author = author;
 		this.dType = dType;
 		this.name = name;
 		this.description = description;
+		this.UID = UID;
+		this.status = Status.CREATED;
 	}
 
 	@Override
@@ -227,6 +252,5 @@ public class Document {
 			return false;
 		return true;
 	}
-	
-	
+
 }

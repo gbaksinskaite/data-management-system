@@ -15,22 +15,49 @@ class DocTypes extends Component {
     this.state = {
       docTypesData: [],
       serverData: [],
-      tableData: []
+      tableData: [],
+      pagingData: [],
+      serverRequestPagingData: []
     };
   }
 
   componentDidMount() {
-    this.fetchServerData();
+    this.fetchServerData(0, 8, null, null, "");
   }
 
   dataFields = ["number", "name", "canCreate", "canSign", "edit"];
   columnNames = ["#", "Name", "Creating Groups", "Signing Groups", ""];
 
-  fetchServerData = () => {
+  columns = [
+    { dataField: "name", text: "Type", sort: true },
+    { dataField: "canCreate", text: "Creating Groups", sort: false },
+    { dataField: "canSign", text: "Signing Groups", sort: false },
+    { dataField: "edit", text: "", sort: false }
+  ];
+
+  fetchServerData = (
+    page,
+    sizePerPage,
+    sortField,
+    order,
+    searchValueString
+  ) => {
+    const pageData = {
+      limit: sizePerPage,
+      order: order,
+      page: page,
+      sortBy: sortField,
+      searchValueString: searchValueString
+    };
+
     axios
-      .get(serverUrl + "doct/all")
+      .post(serverUrl + "doct/all/nogroups", pageData)
       .then(response => {
         this.parseData(response.data);
+        this.setState({
+          pagingData: response.data.pagingData,
+          serverRequestPagingData: pageData
+        });
       })
       .catch(error => {
         console.log(error);
@@ -39,10 +66,10 @@ class DocTypes extends Component {
 
   parseData = data => {
     if (data) {
-      const tableData = data.map((item, index) => {
+      const tableData = data.documentList.content.map((item, index) => {
         return {
           number: index + 1,
-          name: item.name,
+          name: item,
           canCreate: (
             <PopOver
               popOverApparance={
@@ -50,8 +77,8 @@ class DocTypes extends Component {
               }
               popOverTitle={"Groups with Create rights:"}
               popOverContent={
-                item.groupsToCreate.length > 0
-                  ? this.reduceList(item.groupsToCreate)
+                data.creating[item].length > 0
+                  ? this.reduceList(data.creating[item])
                   : "None"
               }
             />
@@ -63,31 +90,47 @@ class DocTypes extends Component {
               }
               popOverTitle={"Groups with Sign rights:"}
               popOverContent={
-                item.groupsToApprove.length > 0
-                  ? this.reduceList(item.groupsToApprove)
+                data.approving[item].length > 0
+                  ? this.reduceList(data.approving[item])
                   : "None"
               }
             />
           ),
-          edit: <Edit owner={item.name} />
+          edit: <Edit owner={item} reloadTable={this.reloadTable} />
         };
       });
       this.setState({ tableData: tableData });
     }
   };
 
+  reloadTable = () => {
+    const { serverRequestPagingData } = this.state;
+    setTimeout(() => {
+      this.setState({ tableData: [] });
+    }, 1);
+    this.fetchServerData(
+      serverRequestPagingData.page,
+      serverRequestPagingData.limit,
+      serverRequestPagingData.sortBy,
+      serverRequestPagingData.order,
+      serverRequestPagingData.searchValueString
+    );
+  };
+
   reduceList = data => {
-    if (data) {
-      let reducedList = data.reduce((sum, item, index) => {
-        if (index === 0) {
-          return sum + item;
-        } else {
-          return sum + ", " + item;
-        }
-      });
-      reducedList += ".";
-      return reducedList;
+    let sum = "";
+    for (let i = 0; i < data.length; i++) {
+      const element = data[i];
+      if (i === 0) {
+        sum = element;
+      } else if (i < 5) {
+        sum += ", " + element;
+      } else {
+        sum += " and " + Number(data.length - 5) + " more...";
+        break;
+      }
     }
+    return sum;
   };
 
   render() {
@@ -118,12 +161,17 @@ class DocTypes extends Component {
               Document Types
             </Link>
           </div>
+
           <Table
             id={"docTypes"}
-            dataFields={this.dataFields}
-            columnNames={this.columnNames}
             tableData={this.state.tableData}
-            searchBarId={"docTypeSearchBar"}
+            searchBarId={"docTypesSearchBar"}
+            requestNewData={this.fetchServerData}
+            pagingData={this.state.pagingData}
+            columns={this.columns}
+            selectType={"radio"}
+            handleRowSelect={() => {}}
+            setSelectedItems={() => {}}
           />
         </div>
       </div>

@@ -1,10 +1,13 @@
 package lt.vtmc.user.controller;
 
-import java.util.List;
+import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,15 +18,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import lt.vtmc.documents.service.DocumentService;
 import lt.vtmc.groups.service.GroupService;
+import lt.vtmc.paging.PagingData;
 import lt.vtmc.user.dto.CreateUserCommand;
 import lt.vtmc.user.dto.UpdateUserCommand;
 import lt.vtmc.user.dto.UserDetailsDTO;
 import lt.vtmc.user.model.User;
 import lt.vtmc.user.service.UserService;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Controller for managing system users.
@@ -42,14 +44,17 @@ public class UserController {
 	@Autowired
 	private GroupService groupService;
 
+	@Autowired
+	private DocumentService docService;
+
 	/**
 	 * Creates user with ADMIN role. Only system administrator should be able to
 	 * access this method.
 	 * 
-	 * @url /api/createadmin
-	 * @method POST }
-	 * @param user details
+	 * @param command of new administrator details
+	 * @return response entity of type string with message
 	 */
+	@Secured({ "ROLE_ADMIN" })
 	@RequestMapping(path = "/api/createadmin", method = RequestMethod.POST)
 	public ResponseEntity<String> createAdmin(@RequestBody CreateUserCommand command) {
 		try {
@@ -79,10 +84,10 @@ public class UserController {
 	 * Creates user with USER role. Only system administrator should be able to
 	 * access this method.
 	 * 
-	 * @url /api/createuser
-	 * @method POST
-	 * @param user details
+	 * @param command of new user details
+	 * @return response entity of type string with message
 	 */
+	@Secured({ "ROLE_ADMIN" })
 	@RequestMapping(path = "/api/createuser", method = RequestMethod.POST)
 	public ResponseEntity<String> createUser(@RequestBody CreateUserCommand command) {
 
@@ -108,24 +113,29 @@ public class UserController {
 	}
 
 	/**
-	 * Finds and returns all users registered in the database.
+	 * Controller method to get a list of users by paging data provided.
 	 * 
-	 * @url /api/users
-	 * @method GET
+	 * @param pagingData to set number of items that will be returned, sorting order
+	 *                   and search phrase
+	 * @return map of users and paging information
 	 */
-	@GetMapping(path = "/api/users")
-	public List<UserDetailsDTO> listAllUsers() {
-		LOG.info("# LOG # Initiated by [{}]: requested list of all users #",
+	@Secured({ "ROLE_ADMIN" })
+	@RequestMapping(path = "/api/users", method = RequestMethod.POST)
+	public Map<String, Object> listAllUsers(@RequestBody PagingData pagingData) {
+
+		LOG.info("# LOG # Initiated by [{}]: requested list of all groups #",
 				SecurityContextHolder.getContext().getAuthentication().getName());
-		return userService.retrieveAllUsers();
+
+		return userService.retrieveAllUsers(pagingData);
 	}
 
 	/**
 	 * Finds and returns a user using username.
 	 * 
-	 * @url /api/user/{username}
-	 * @method GET
+	 * @param username of user to be found
+	 * @return user details DTO
 	 */
+	@Secured({ "ROLE_ADMIN", "ROLE_USER" })
 	@GetMapping(path = "/api/user/{username}")
 	public UserDetailsDTO findUserByUsername(@PathVariable("username") String username) {
 
@@ -136,11 +146,12 @@ public class UserController {
 	}
 
 	/**
-	 * Deletes user from database
+	 * Deletes user from database.
 	 * 
-	 * @url /api/delete/{username}
-	 * @method DELETE
+	 * @param username to be deleted from database
+	 * @return response entity with status and message
 	 */
+	@Secured({ "ROLE_ADMIN" })
 	@DeleteMapping("/api/delete/{username}")
 	public ResponseEntity<String> deleteUserByUsername(@PathVariable("username") String username) {
 		User tmpUser = userService.findUserByUsername(username);
@@ -160,11 +171,13 @@ public class UserController {
 	}
 
 	/**
-	 * Updates user information in the database
+	 * Updates user information in the database.
 	 * 
-	 * @url /api/user/update/{username}
-	 * @method POST
+	 * @param username of user entity that is going to be updated
+	 * @param command  of update user
+	 * @return response entity of update status
 	 */
+	@Secured({ "ROLE_ADMIN" })
 	@PostMapping(path = "/api/user/update/{username}")
 	public ResponseEntity<String> updateUserByUsername(@PathVariable("username") String username,
 			@RequestBody UpdateUserCommand command) {
@@ -172,7 +185,7 @@ public class UserController {
 			if (userService.findUserByUsername(username) != null) {
 				userService.updateUserDetails(username, command.getName(), command.getSurname(), command.getPassword(),
 						command.getRole());
-				groupService.compareGroups(command.getGroupList(), username);
+				groupService.updateGroups(command.getGroupList(), username);
 
 				LOG.info("# LOG # Initiated by [{}]: User [{}] was updated #",
 						SecurityContextHolder.getContext().getAuthentication().getName(), username);
@@ -188,17 +201,120 @@ public class UserController {
 		return new ResponseEntity<String>("No user found", HttpStatus.NOT_FOUND);
 	}
 
-	@GetMapping(path = "/api/{username}/exists")
-	public boolean checkIfUserExists(@PathVariable("username") String username) throws Exception {
-		if (userService.findUserByUsername(username) != null) {
-			return true;
+	/**
+	 * Method will check if provided user name already exists in data base.
+	 * 
+	 * @param username to check if it exists
+	 * @return true if user name exists
+	 */
+	@Secured({ "ROLE_ADMIN" })
+	@GetMapping(path = "/api/user/exists")
+	public boolean checkIfUserExists(String username) {
+		return userService.checkIfUsernameExists(username);
+	}
+
+	/**
+	 * 
+	 * Controller method will return document types that a user can create.
+	 * 
+	 * @param username   that is requested
+	 * @param pagingData to set response size, sort order and search phrase
+	 * @return list of doc types user can create and paging information
+	 */
+	@Secured({ "ROLE_USER", "ROLE_ADMIN" })
+	@PostMapping(path = "/api/{username}/dtypescreate")
+	public Map<String, Object> getUserDocTypesCreate(@PathVariable("username") String username,
+			@RequestBody PagingData pagingData) {
+		LOG.info("# LOG # Initiated by [{}]: Requested document types that user [{}] can create #",
+				SecurityContextHolder.getContext().getAuthentication().getName(), username);
+		return userService.getUserDocTypesToCreate(username, pagingData);
+	}
+
+	/**
+	 * 
+	 * Controller method will return document types that a user can sign.
+	 * 
+	 * @param username   that is requested
+	 * @param pagingData to set response size, sort order and search phrase
+	 * @return list of doc types user can sign and paging information
+	 */
+	@Secured({ "ROLE_USER", "ROLE_ADMIN" })
+	@PostMapping(path = "/api/{username}/doctobesigned")
+	public Map<String, Object> getDocumentsToBeSigned(@PathVariable("username") String username,
+			@RequestBody PagingData pagingData) {
+		LOG.info("# LOG # Initiated by [{}]: Requested document types that user [{}] can sign #",
+				SecurityContextHolder.getContext().getAuthentication().getName(), username);
+		return docService.findAllDocumentsToSignByUsername(username, pagingData);
+	}
+
+	/**
+	 * Controller method that will find all documents of user.
+	 * 
+	 * @param username   that is requested
+	 * @param pagingData to set response size, sort order and search phrase
+	 * @return documents list and paging information
+	 */
+	@Secured({ "ROLE_USER", "ROLE_ADMIN" })
+	@PostMapping(path = "/api/{username}/alldocuments")
+	public Map<String, Object> getAllDocumentsByUsername(@PathVariable("username") String username,
+			@RequestBody PagingData pagingData) {
+		LOG.info("# LOG # Initiated by [{}]: Requested all documents of user [{}] #",
+				SecurityContextHolder.getContext().getAuthentication().getName(), username);
+
+		return docService.returnAllDocumentsByUsername(username, pagingData);
+	}
+
+	/**
+	 * This method will create initial administrator. It only can be executed
+	 * successfully if there is no user with administrator role in database.
+	 * 
+	 * @param command to create initial user
+	 * @return ResponseEntity of response status
+	 * 
+	 */
+	@PostMapping("/api/user/first/create")
+	public ResponseEntity<String> createInitialAdmin(@RequestBody CreateUserCommand command) {
+		boolean adminShouldBeCreated = userService.shouldCreateFirstUser();
+		if (adminShouldBeCreated) {
+			LOG.info("# LOG # Initial user with username [{}] has been created. #", command.getUsername());
+			userService.createSystemAdministrator(command.getUsername(), command.getName(), command.getSurname(),
+					command.getPassword());
+			return new ResponseEntity<String>("Created succesfully.", HttpStatus.CREATED);
 		} else {
-			return false;
+			LOG.info(
+					"# LOG # Atempt to create initial admin has been blocked because there is already admin created. #");
+			return new ResponseEntity<String>("Initial Admin is already created.", HttpStatus.METHOD_NOT_ALLOWED);
 		}
 	}
-	
-	@GetMapping(path = "/api/{username}/dtypescreate")
-	public String[]	getUserDocTypesCreate(@PathVariable ("username") String username) {
-		return userService.getUserDocTypesToCreate(username);
+
+	/**
+	 * Returns info if initial user needs to be created.
+	 * 
+	 * @return ResponseEntity of response status
+	 */
+	@GetMapping("/api/user/first")
+	public ResponseEntity<String> shouldInitAdminBeCreated() {
+		boolean dbContainsAdmin = userService.shouldCreateFirstUser();
+		if (dbContainsAdmin) {
+			LOG.info("# LOG # Initial admin creation check returned true. Initial admin needs to be created. #");
+			return new ResponseEntity<String>("Initial user needs to be created.", HttpStatus.OK);
+		} else {
+			return new ResponseEntity<String>("Initial Admin is already created.", HttpStatus.IM_USED);
+		}
+	}
+
+	/**
+	 * Controller method that will find all users and their information without
+	 * groups.
+	 * 
+	 * @param pagingData to set response size, sort order and search phrase
+	 * @return users and paging information
+	 */
+	@Secured({ "ROLE_ADMIN" })
+	@PostMapping("/api/user/nogroups")
+	public Map<String, Object> getUsersNoGroup(@RequestBody PagingData pagingData) {
+		LOG.info("# LOG # Initiated by [{}]: Requested list of users without groups. #",
+				SecurityContextHolder.getContext().getAuthentication().getName());
+		return userService.getUsersNoGroups(pagingData.getSearchValueString(), pagingData);
 	}
 }

@@ -1,9 +1,14 @@
 package lt.vtmc.groups.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +17,8 @@ import lt.vtmc.docTypes.model.DocType;
 import lt.vtmc.groups.dao.GroupRepository;
 import lt.vtmc.groups.dto.GroupDetailsDTO;
 import lt.vtmc.groups.model.Group;
+import lt.vtmc.paging.PagingData;
+import lt.vtmc.paging.PagingResponse;
 import lt.vtmc.user.dao.UserRepository;
 import lt.vtmc.user.model.User;
 
@@ -29,13 +36,19 @@ public class GroupService {
 
 	@Autowired
 	private UserRepository userRepository;
-	
+
 	@Autowired
 	private DocTypeRepository docTypesRepo;
+
+	@Autowired
+	PagingData pagingData;
 
 	/**
 	 * 
 	 * This method finds groups from group repository.
+	 *
+	 * @param name of the group
+	 * @return group entity type object
 	 */
 	public Group findGroupByName(String name) {
 		return groupRepository.findGroupByName(name);
@@ -43,8 +56,10 @@ public class GroupService {
 
 	/**
 	 * Method to create user groups.
-	 * 
-	 * @return Group
+	 *
+	 * @param name of the group
+	 * @param description of the group
+	 * @return groupt entity type object
 	 */
 	@Transactional
 	public Group createGroup(String name, String description) {
@@ -62,8 +77,8 @@ public class GroupService {
 	/**
 	 * Method to add users to groups.
 	 * 
-	 * @param names
-	 * @param username
+	 * @param groupList of groups to add the user to
+	 * @param username or the user added to groups
 	 */
 	@Transactional
 	public void addUserToGroupByUsername(String[] groupList, String username) {
@@ -84,8 +99,8 @@ public class GroupService {
 	/**
 	 * Method to remove users from groups.
 	 * 
-	 * @param names
-	 * @param username
+	 * @param groupList of groups to remove the user from
+	 * @param username of the user to be removed from the groups
 	 */
 	@Transactional
 	public void removeUserFromGroupByUsername(String[] groupList, String username) {
@@ -104,10 +119,10 @@ public class GroupService {
 	}
 
 	/**
-	 * Method to add users to groups.
+	 * Method to remove users from groups.
 	 * 
-	 * @param names
-	 * @param username
+	 * @param groupname of the group to remove users from
+	 * @param userlist of users to remove from the group
 	 */
 	@Transactional
 	public void removeUsersFromGroup(String groupname, String[] userlist) {
@@ -124,7 +139,12 @@ public class GroupService {
 			}
 		}
 	}
-
+	/**
+	 * Method to add users to groups.
+	 * 
+	 * @param groupname of the group to add users to
+	 * @param userlist of users to add to the group
+	 */
 	@Transactional
 	public void addUsersToGroup(String groupname, String[] userlist) {
 		Group groupToAddTo = groupRepository.findGroupByName(groupname);
@@ -140,17 +160,31 @@ public class GroupService {
 			}
 		}
 	}
-
-	public List<GroupDetailsDTO> retrieveAllGroups() {
-		List<Group> grouplist = groupRepository.findAll();
-		List<GroupDetailsDTO> allGroupss = new ArrayList<GroupDetailsDTO>();
-		for (int i = 0; i < grouplist.size(); i++) {
-			allGroupss.add(new GroupDetailsDTO(grouplist.get(i)));
-		}
-		return allGroupss;
+	/**
+	 * Method to return all groups.
+	 * 
+	 * @param pagingData to set amount of items per page, search phrase and sorting
+	 *                   order
+	 * @return responseMap of groupDetailsDTO objects
+	 */
+	public Map<String, Object> retrieveAllGroups(PagingData pagingData) {
+		Pageable firstPageable = pagingData.getPageable();
+		Page<Group> grouplist = groupRepository.findLike(pagingData.getSearchValueString(), firstPageable);
+		Map<String, Object> responseMap = new HashMap<String, Object>();
+		responseMap.put("pagingData",
+				new PagingResponse(grouplist.getNumber(), grouplist.getTotalElements(), grouplist.getSize()));
+		responseMap.put("groupList", grouplist.getContent().stream().map(groupItem -> new GroupDetailsDTO(groupItem))
+				.collect(Collectors.toList()));
+		return responseMap;
 	}
 
-	public void compareGroups(String[] newGroupList, String username) {
+	/**
+	 * Method to update user groups.
+	 * 
+	 * @param newGroupList of groups to add the user to
+	 * @param username of the user to add to the group
+	 */
+	public void updateGroups(String[] newGroupList, String username) {
 		List<Group> currentGroupList = new ArrayList<Group>();
 		for (int i = 0; i < newGroupList.length; i++) {
 			currentGroupList.add(groupRepository.findGroupByName(newGroupList[i]));
@@ -158,56 +192,54 @@ public class GroupService {
 		User tmpUser = userRepository.findUserByUsername(username);
 		tmpUser.setGroupList(currentGroupList);
 		userRepository.save(tmpUser);
-
-//		***work in progress***
-//		List<Group> currentGroupList = userRepository.findUserByUsername(username).getGroupList();
-//		List<String> groupsToAdd = new ArrayList<String>();
-//		for (int j = 0; j < newGroupList.length; j++) {
-//			if (!currentGroupList.contains(groupRepository.findGroupByName(newGroupList[j]))){
-//				groupsToAdd.add(newGroupList[j]);
-//			};
-//			if (currentGroupList.contains(groupRepository.findGroupByName(newGroupList[j]))){
-//				currentGroupList.remove((groupRepository.findGroupByName(newGroupList[j])));
-//		
-//		groupRepository.save(groupToUpdate);	};
-//		}
-//		String[]groupsToRemove = new String[currentGroupList.size()];
-//		for (int i = 0; i < currentGroupList.size(); i++) {
-//			groupsToRemove[i] = currentGroupList.get(i).getName();
-//		}
-//		String[]groupsToAddString = new String[groupsToAdd.size()];
-//		for (int i = 0; i < groupsToAdd.size(); i++) {
-//			groupsToAddString[i] = groupsToAdd.get(i).toString();
-//		}
-//		addUserToGroupByUsername(groupsToAddString, username);
-//		removeUserFromGroupByUsername(groupsToRemove, username);
 	}
+
+	/**
+	 * Method to update group details.
+	 *  
+	 * @param newName for the group
+	 * @param name of the group (current)
+	 * @param description of the group
+	 * @param newUserList to update
+	 * @param docTypesToApprove full list of document types to approve
+	 * @param docTypesToCreate full list of document types to create
+	 */
 	@Transactional
-	public void updateGroupDetails(String newName, String name, String description, String[] newUserList, String[] docTypesToApprove,
-			String[] docTypesToCreate) {
+	public void updateGroupDetails(String newName, String name, String description, String[] newUserList,
+			String[] docTypesToApprove, String[] docTypesToCreate) {
 		Group groupToUpdate = groupRepository.findGroupByName(name);
-		List<User> currentUserList = new ArrayList<User>();
-		groupToUpdate.setUserList(currentUserList);
 		groupToUpdate.setDescription(description);
-		groupRepository.save(groupToUpdate);
 		groupToUpdate.setName(newName);
-		for (int i = 0; i < newUserList.length; i++) {
-			User userToAdd = userRepository.findUserByUsername(newUserList[i]);
-			List<User> tmpUserList = groupToUpdate.getUserList();
-			List<Group> tmpGroupList = userToAdd.getGroupList();
-			if (tmpUserList.contains(userToAdd) == false && tmpGroupList.contains(groupToUpdate) == false) {
-				tmpGroupList.add(groupToUpdate);
-				userToAdd.setGroupList(tmpGroupList);
-				tmpUserList.add(userToAdd);
-				groupToUpdate.setUserList(tmpUserList);
+		List<User> currentUserList = groupToUpdate.getUserList();
+		List<User> newList = new ArrayList<User>();
+		for (String username : newUserList) {
+			newList.add(userRepository.findUserByUsername(username));
+		}
+
+		for (User user : currentUserList) {
+			if (!newList.contains(user)) {
+				List<Group> tmpUserGroupList = user.getGroupList();
+				tmpUserGroupList.remove(groupToUpdate);
 			}
+		}
+		for (User user : newList) {
+			List<Group> tmpUserGroupList = user.getGroupList();
+			if (!tmpUserGroupList.contains(groupToUpdate)) {
+				tmpUserGroupList.add(groupToUpdate);
+			}
+			userRepository.save(user);
 		}
 		groupRepository.save(groupToUpdate);
 	}
-	
+	/**
+	 * Method to add document types to existing group.
+	 * 
+	 * @param name of document type to add document types to
+	 * @param docTypesToApprove list of document types to approve
+	 * @param docTypesToCreate list of document types to create
+	 */
 	@Transactional
-	public void addDocTypes(String name, String[] docTypesToApprove,
-			String[] docTypesToCreate) {
+	public void addDocTypes(String name, String[] docTypesToApprove, String[] docTypesToCreate) {
 		Group groupToAddTo = groupRepository.findGroupByName(name);
 		List<DocType> docTypesToCreateList = new ArrayList<DocType>();
 		for (int i = 0; i < docTypesToCreate.length; i++) {
@@ -224,6 +256,6 @@ public class GroupService {
 
 	public void deleteGroup(Group tmpGroup) {
 		groupRepository.delete(tmpGroup);
-		}
-		
+	}
+
 }

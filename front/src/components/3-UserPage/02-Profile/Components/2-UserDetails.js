@@ -58,7 +58,7 @@ class UserDetails extends Component {
     axios
       .get(serverUrl + "user/" + this.state.username)
       .then(response => {
-        if (!this.state.userData) {
+        if (this.state.userData === null) {
           this.setState({ userData: response.data });
           this.setUpData(response.data);
         }

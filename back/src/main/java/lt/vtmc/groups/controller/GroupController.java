@@ -2,12 +2,14 @@ package lt.vtmc.groups.controller;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +25,7 @@ import lt.vtmc.groups.dto.GroupDetailsDTO;
 import lt.vtmc.groups.dto.UpdateGroupCommand;
 import lt.vtmc.groups.model.Group;
 import lt.vtmc.groups.service.GroupService;
+import lt.vtmc.paging.PagingData;
 import lt.vtmc.user.controller.UserController;
 import lt.vtmc.user.model.User;
 import lt.vtmc.user.service.UserService;
@@ -48,16 +51,18 @@ public class GroupController {
 	 * Creates group with ADMIN role. Only system administrator should be able to
 	 * access this method.
 	 * 
-	 * @url /api/creategroup
-	 * @method POST
-	 * @param user details
+	 * @param command containing group name, description, user list and document
+	 *                type lists
+	 * @return responseEntity containing response text and Http status
 	 */
+	@Secured({ "ROLE_ADMIN" })
 	@RequestMapping(path = "/api/creategroup", method = RequestMethod.POST)
 	public ResponseEntity<String> createGroup(@RequestBody CreateGroupCommand command) {
 		if (groupService.findGroupByName(command.getGroupName()) == null) {
 			groupService.createGroup(command.getGroupName(), command.getDescription());
 			groupService.addUsersToGroup(command.getGroupName(), command.getUserList());
-			groupService.addDocTypes(command.getGroupName(), command.getDocTypesToSign(), command.getDocTypesToCreate());
+			groupService.addDocTypes(command.getGroupName(), command.getDocTypesToSign(),
+					command.getDocTypesToCreate());
 			LOG.info("# LOG # Initiated by [{}]: Group [{}] was created #",
 					SecurityContextHolder.getContext().getAuthentication().getName(), command.getGroupName());
 
@@ -69,15 +74,30 @@ public class GroupController {
 		return new ResponseEntity<String>("Failed to create group", HttpStatus.CONFLICT);
 	}
 
-	@RequestMapping(path = "/api/groups", method = RequestMethod.GET)
-	public List<GroupDetailsDTO> listAllGroups() {
+	/**
+	 * Returns all groups created within the system with paging
+	 * 
+	 * @param pagingData to set amount of items per page, search phrase and sorting
+	 *                   order
+	 * @return list of groups and paging data
+	 */
+	@Secured({ "ROLE_ADMIN" })
+	@RequestMapping(path = "/api/groups", method = RequestMethod.POST)
+	public Map<String, Object> listAllGroups(@RequestBody PagingData pagingData) {
 
 		LOG.info("# LOG # Initiated by [{}]: requested list of all groups #",
 				SecurityContextHolder.getContext().getAuthentication().getName());
 
-		return groupService.retrieveAllGroups();
+		return groupService.retrieveAllGroups(pagingData);
 	}
 
+	/**
+	 * Returns a single group by specified name
+	 * 
+	 * @param name of the group
+	 * @return GroupDetailsDTO type object
+	 */
+	@Secured({ "ROLE_ADMIN" })
 	@GetMapping(path = "/api/groups/{groupname}")
 	public GroupDetailsDTO findGroupByName(@PathVariable("groupname") String name) {
 
@@ -87,6 +107,14 @@ public class GroupController {
 		return new GroupDetailsDTO(groupService.findGroupByName(name));
 	}
 
+	/**
+	 * Adds a single user to specified groups
+	 * 
+	 * @param username unique name within the system
+	 * @param names    list of groups to add the user to
+	 * @return Response text and http status
+	 */
+	@Secured({ "ROLE_ADMIN" })
 	@PostMapping(path = "/api/addGroup/{username}")
 	public ResponseEntity<String> addGroup(@PathVariable("username") String username, @RequestBody String[] names) {
 		if (userService.findUserByUsername(username) != null) {
@@ -107,16 +135,20 @@ public class GroupController {
 	/**
 	 * Updates group information
 	 * 
-	 * @url /api/groups/{groupname}
-	 * @method POST
+	 * @param command containing new name, description and userlist as well as
+	 *                document types to approve and create
+	 * @param name    of the group
+	 * @return response entity of action status
 	 */
+	@Secured({ "ROLE_ADMIN" })
 	@PostMapping(path = "/api/groups/update/{groupname}")
 	public ResponseEntity<String> updateGroupByGroupName(@RequestBody UpdateGroupCommand command,
 			@PathVariable("groupname") String name) {
 		if (groupService.findGroupByName(name) != null) {
 			groupService.updateGroupDetails(command.getNewName(), name, command.getDescription(), command.getUserList(),
 					command.getDocTypesToApprove(), command.getDocTypesToCreate());
-			groupService.addDocTypes(command.getNewName(), command.getDocTypesToApprove(), command.getDocTypesToCreate());
+			groupService.addDocTypes(command.getNewName(), command.getDocTypesToApprove(),
+					command.getDocTypesToCreate());
 			LOG.info("# LOG # Initiated by [{}]: Group [{}] was updated #",
 					SecurityContextHolder.getContext().getAuthentication().getName(), name);
 
@@ -126,15 +158,16 @@ public class GroupController {
 		LOG.info("# LOG # Initiated by [{}]: Group [{}] was NOT updated - [{}] was NOT found #",
 				SecurityContextHolder.getContext().getAuthentication().getName(), name, name);
 
-		return new ResponseEntity<String>("No user found", HttpStatus.NOT_FOUND);
+		return new ResponseEntity<String>("No group found", HttpStatus.NOT_FOUND);
 	}
 
 	/**
 	 * Checks if provided groupname exists.
 	 * 
-	 * @param name
-	 * @return
+	 * @param name of the group
+	 * @return true or false
 	 */
+	@Secured({ "ROLE_ADMIN" })
 	@GetMapping(path = "/api/group/{name}/exists")
 	public boolean groupNameExists(@PathVariable("name") String name) {
 		if (this.groupService.findGroupByName(name) != null) {
@@ -144,19 +177,31 @@ public class GroupController {
 		}
 	}
 
+	/**
+	 * Deletes a group
+	 * 
+	 * @param groupname of the group to delete
+	 * @return Response text and http status
+	 */
+	@Secured({ "ROLE_ADMIN" })
 	@DeleteMapping("/api/group/{groupname}/delete")
 	public ResponseEntity<String> deleteGroupByName(@PathVariable("groupname") String groupname) {
 		Group tmpGroup = groupService.findGroupByName(groupname);
 		if (tmpGroup != null) {
-
-			LOG.info("# LOG # Initiated by [{}]: User [{}] was deleted #",
+			List<User> tmpList = tmpGroup.getUserList();
+			for (User user : tmpList) {
+				List<Group> tmpGroupList = user.getGroupList();
+				tmpGroupList.remove(tmpGroup);
+			}
+			tmpGroup.setUserList(null);
+			LOG.info("# LOG # Initiated by [{}]: Group [{}] was deleted #",
 					SecurityContextHolder.getContext().getAuthentication().getName(), tmpGroup);
 
 			groupService.deleteGroup(tmpGroup);
 			return new ResponseEntity<String>("Deleted succesfully", HttpStatus.OK);
 		}
 
-		LOG.info("# LOG # Initiated by [{}]: User [{}] was NOT deleted - [{}] was NOT found #",
+		LOG.info("# LOG # Initiated by [{}]: Group [{}] was NOT deleted - [{}] was NOT found #",
 				SecurityContextHolder.getContext().getAuthentication().getName(), groupname, groupname);
 
 		return new ResponseEntity<String>("No user found", HttpStatus.NOT_FOUND);

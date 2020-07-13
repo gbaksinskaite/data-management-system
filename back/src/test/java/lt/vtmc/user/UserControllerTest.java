@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import lt.vtmc.documents.service.DocumentService;
 import lt.vtmc.groups.service.GroupService;
 import lt.vtmc.security.SecurityEntryPoint;
 import lt.vtmc.user.controller.UserController;
@@ -38,16 +39,20 @@ public class UserControllerTest {
 
 	@MockBean
 	private User user;
-	
+
 	@MockBean
 	private GroupService groupService;
+
+	@MockBean
+	private DocumentService docService;
 
 	@Test
 	public void testCreateUser() throws Exception {
 		User mockUser = new User("testUsername", "testName", "testSurname", "testing123", "USER");
 
 		// userService.createUser to respond back with mockUser
-		Mockito.when(userService.createUser(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(mockUser);
+		Mockito.when(userService.createUser(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(),
+				Mockito.anyString())).thenReturn(mockUser);
 
 		String exampleCreateUserCommand = "{\"username\":\"testAdmin\",\"name\":\"testing123\",\"surname\":\"testing123\",\"password\":\"testing123\",\"names\":[\"dummy1\"]}";
 
@@ -60,7 +65,7 @@ public class UserControllerTest {
 
 		MockHttpServletResponse response = result.getResponse();
 
-		assertEquals(HttpStatus.CREATED.value(), response.getStatus());
+		assertEquals(HttpStatus.OK.value(), response.getStatus());
 	}
 
 	@Test
@@ -68,7 +73,8 @@ public class UserControllerTest {
 		User mockUser = new User("testUsername", "testName", "testSurname", "testing123", "ADMIN");
 
 		// userService.createSystemAdministrator to respond back with mockUser
-		Mockito.when(userService.createSystemAdministrator(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(mockUser);
+		Mockito.when(userService.createSystemAdministrator(Mockito.anyString(), Mockito.anyString(),
+				Mockito.anyString(), Mockito.anyString())).thenReturn(mockUser);
 
 		String exampleCreateUserCommand = "{\"username\":\"testAdmin\",\"name\":\"testing123\",\"surname\":\"testing123\",\"password\":\"testing123\",\"names\":[\"dummy1\"]}";
 
@@ -81,6 +87,6 @@ public class UserControllerTest {
 
 		MockHttpServletResponse response = result.getResponse();
 
-		assertEquals(HttpStatus.CREATED.value(), response.getStatus());
+		assertEquals(HttpStatus.OK.value(), response.getStatus());
 	}
 }

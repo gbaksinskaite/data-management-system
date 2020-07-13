@@ -52,23 +52,16 @@ public class User {
 	@NotEmpty(message = "Role field may not be empty")
 	private String role;
 
-	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+	@ManyToMany(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@JoinTable(name = "USERS_TO_GROUPS", joinColumns = @JoinColumn(name = "group_id"), inverseJoinColumns = @JoinColumn(name = "user_id"))
 	private List<Group> groupList;
 
-	@OneToMany(fetch = FetchType.EAGER)
+	@OneToMany(fetch = FetchType.LAZY)
 	private List<Document> createdDocuments = new ArrayList<Document>();
-	
-	@OneToMany(fetch = FetchType.EAGER)
+
+	@OneToMany(fetch = FetchType.LAZY)
 	private List<Document> processedDocuments = new ArrayList<Document>();
-	
-	/**
-	 * Constructor.
-	 * 
-	 * @param passwordGroups
-	 * @param username
-	 * @param role
-	 */
+
 	public User(String username, String name, String surname, String password, String role) {
 		this.username = username;
 		this.name = name;
@@ -76,106 +69,70 @@ public class User {
 		this.password = password;
 		this.role = role;
 	}
-	/**
-	 * Empty constructor.
-	 */
+
 	public User() {
 	}
 
-	/**
-	 * 
-	 * @return password
-	 */
+	public List<Document> getCreatedDocuments() {
+		return createdDocuments;
+	}
+
+	public void setCreatedDocuments(List<Document> createdDocuments) {
+		this.createdDocuments = createdDocuments;
+	}
+
+	public List<Document> getProcessedDocuments() {
+		return processedDocuments;
+	}
+
+	public void setProcessedDocuments(List<Document> processedDocuments) {
+		this.processedDocuments = processedDocuments;
+	}
+
 	public String getPassword() {
 		return password;
 	}
 
-	/**
-	 * 
-	 * @param password
-	 */
 	public void setPassword(String password) {
 		this.password = password;
 	}
 
-	/**
-	 * 
-	 * @return username
-	 */
 	public String getUsername() {
 		return username;
 	}
 
-	/**
-	 * 
-	 * @param username
-	 */
 	public void setUsername(String username) {
 		this.username = username;
 	}
 
-	/**
-	 * 
-	 * @return name
-	 */
 	public String getName() {
 		return name;
 	}
 
-	/**
-	 * 
-	 * @param name
-	 */
 	public void setName(String name) {
 		this.name = name;
 	}
 
-	/**
-	 * 
-	 * @return surname
-	 */
 	public String getSurname() {
 		return surname;
 	}
 
-	public void/**
-				 * 
-				 * @param surname
-				 */
-			setSurname(String surname) {
+	public void setSurname(String surname) {
 		this.surname = surname;
 	}
 
-	/**
-	 * Set
-	 * 
-	 * @return role
-	 */
 	public String getRole() {
 		return role;
 	}
 
-	/**
-	 * Groups
-	 * 
-	 * @param role
-	 */
 	public void setRole(String role) {
 		this.role = role;
 	}
 
-	/**
-	 * 
-	 * @return
-	 */
 	public List<Group> getGroupList() {
 		return groupList;
 	}
 
-	/**
-	 * 
-	 * @param groupList
-	 */
 	public void setGroupList(List<Group> groupList) {
 		this.groupList = groupList;
 	}
@@ -243,10 +200,5 @@ public class User {
 		return "User [password=" + password + ", id=" + id + ", username=" + username + ", name=" + name + ", surname="
 				+ surname + ", role=" + role + ", groupList=" + groupList + "]";
 	}
-
-	/**
-	 * 
-	 * @return
-	 */
 
 }

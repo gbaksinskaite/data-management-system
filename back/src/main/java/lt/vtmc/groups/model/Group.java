@@ -36,123 +36,68 @@ public class Group {
 	@NotEmpty
 	private String name;
 
-	
 	@Column(name = "description", length = 500)
 	private String description;
 
-	@ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+	@ManyToMany(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@JoinTable(name = "GROUPS_CREATING", joinColumns = @JoinColumn(name = "group_id"), inverseJoinColumns = @JoinColumn(name = "doc_id"))
 	private List<DocType> docTypesToCreate;
 
-	@ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+	@ManyToMany(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@JoinTable(name = "GROUPS_APPROVING", joinColumns = @JoinColumn(name = "group_id"), inverseJoinColumns = @JoinColumn(name = "doc_id"))
 	private List<DocType> docTypesToApprove;
 
 	@ManyToMany(mappedBy = "groupList", fetch = FetchType.EAGER)
 	private List<User> userList;
 
-	/**
-	 * Constructor.
-	 * 
-	 * @param name
-	 * @param docType
-	 * 
-	 */
 	public Group(String name, String description) {
 		this.name = name;
 		this.description = description;
 	}
 
-	/**
-	 * Empty constructor.
-	 */
 	public Group() {
 	}
 
-	/**
-	 * 
-	 * @return getUserList
-	 */
 	public List<User> getUserList() {
 		return userList;
 	}
 
-	/**
-	 * 
-	 * @param groupUserList
-	 */
 	public void setUserList(List<User> groupUserList) {
 		this.userList = groupUserList;
 	}
 
-	/**
-	 * 
-	 * @return id
-	 */
 	public int getId() {
 		return id;
 	}
 
-	/**
-	 * 
-	 * @return name
-	 */
 	public String getName() {
 		return name;
 	}
 
-	/**
-	 * 
-	 * @param name
-	 */
 	public void setName(String name) {
 		this.name = name;
 	}
 
-	/**
-	 * 
-	 * @return description
-	 */
 	public String getDescription() {
 		return description;
 	}
 
-	/**
-	 * 
-	 * @param description
-	 */
 	public void setDescription(String description) {
 		this.description = description;
 	}
 
-	/**
-	 * 
-	 * @return docTypesToCreate
-	 */
 	public List<DocType> getDocTypesToCreate() {
 		return docTypesToCreate;
 	}
 
-	/**
-	 * 
-	 * @param docTypesToCreate
-	 */
 	public void setDocTypesToCreate(List<DocType> docTypesToCreate) {
 		this.docTypesToCreate = docTypesToCreate;
 	}
 
-	/**
-	 * 
-	 * @return docTypesToApprove
-	 */
 	public List<DocType> getDocTypesToApprove() {
 		return docTypesToApprove;
 	}
 
-	/**
-	 * 
-	 * @param docTypesToApprove
-	 */
 	public void setDocTypesToApprove(List<DocType> docTypesToApprove) {
 		this.docTypesToApprove = docTypesToApprove;
 	}

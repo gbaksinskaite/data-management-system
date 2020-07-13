@@ -24,16 +24,6 @@ public class GroupDetailsDTO {
 	@JsonIgnore
 	private List<DocType> docTypesToApprove;
 
-	/**
-	 * Constructor method for GroupDetails
-	 * 
-	 * @param name
-	 * @param description
-	 * @param userListArray
-	 * @param docTypesToCreate
-	 * @param docTypesToApprove
-	 */
-
 	public GroupDetailsDTO(Group group) {
 		super();
 		this.name = group.getName();
@@ -41,6 +31,10 @@ public class GroupDetailsDTO {
 		this.userListArray = group.getUserList();
 		this.docTypesToCreate = group.getDocTypesToCreate();
 		this.docTypesToApprove = group.getDocTypesToApprove();
+	}
+
+	public void setUserListArray(List<User> userListArray) {
+		this.userListArray = userListArray;
 	}
 
 	public String getName() {
